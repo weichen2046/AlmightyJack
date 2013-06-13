@@ -4,6 +4,7 @@
 package com.ideajack.almightyjack.service;
 
 import static com.ideajack.almightyjack.service.ICmdConstants.*;
+import static com.ideajack.almightyjack.service.ICommonConstants.*;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -26,7 +27,6 @@ public class ConnectionHandlerRunnable implements Runnable {
     private BufferedOutputStream out;
     private static final String RESPONSE_STATUS_OK = "OK";
     private static final String RESPONSE_STATUS_ERROR = "ERROR";
-    private static final int LONG_BYTES = Long.SIZE / 8;
 
     public ConnectionHandlerRunnable(Socket client) {
         mClient = client;
@@ -99,7 +99,7 @@ public class ConnectionHandlerRunnable implements Runnable {
         final byte[] cmdBuf = new byte[4];
         try {
             if(in.read(cmdBuf) > 0) {
-            	cmd = ByteBuffer.wrap(cmdBuf).getInt();
+                cmd = ByteBuffer.wrap(cmdBuf).getInt();
             }
         } catch (NullPointerException nullEx) {
             Log.d(LOG_TAG,
@@ -115,7 +115,7 @@ public class ConnectionHandlerRunnable implements Runnable {
     private void processClientCmd(int cmd) {
         switch (cmd) {
         case CMD_HOLD_SOCKET:
-            writeResponseStatus(true);
+            processHoldSocket();
             break;
         case CMD_GET_DISPLAY_VERSION:
             processGetDisplayVersion();
@@ -124,6 +124,18 @@ public class ConnectionHandlerRunnable implements Runnable {
         default:
             writeResponseStatus(false);
             break;
+        }
+    }
+
+    private void processHoldSocket() {
+        HoldSocketManager instan = HoldSocketManager.getInstance();
+        if(instan.isSocketAvailable()) {
+            // socket available now, no need to create new socket to hold
+            writeResponseStatus(false);
+        } else  {
+            // socket not available, then create new socket to be holded by Phone
+            instan.updateSocket(mClient);
+            writeResponseStatus(true);
         }
     }
 
